@@ -22,6 +22,8 @@ file(GLOB_RECURSE onnxruntime_training_srcs
 file(GLOB_RECURSE onnxruntime_training_framework_excluded_srcs CONFIGURE_DEPENDS
     "${ORTTRAINING_SOURCE_DIR}/core/framework/torch/*.h"
     "${ORTTRAINING_SOURCE_DIR}/core/framework/torch/*.cc"
+    "${ORTTRAINING_SOURCE_DIR}/core/framework/triton/*.h"
+    "${ORTTRAINING_SOURCE_DIR}/core/framework/triton/*.cc"
 )
 
 list(REMOVE_ITEM onnxruntime_training_srcs ${onnxruntime_training_framework_excluded_srcs})
@@ -73,6 +75,10 @@ if (onnxruntime_BUILD_UNIT_TESTS)
 
   if (onnxruntime_ENABLE_TRAINING_TORCH_INTEROP)
     target_link_libraries(onnxruntime_training_runner PRIVATE Python::Python)
+  endif()
+
+  if (onnxruntime_ENABLE_TRITON)
+    target_link_libraries(onnxruntime_training_runner PRIVATE Python::Module)
   endif()
 
   onnxruntime_add_include_to_target(onnxruntime_training_runner onnxruntime_training onnxruntime_framework onnxruntime_common onnx onnx_proto ${PROTOBUF_LIB} onnxruntime_training flatbuffers::flatbuffers Boost::mp11 safeint_interface)
@@ -129,6 +135,10 @@ if (onnxruntime_BUILD_UNIT_TESTS)
 
   if (onnxruntime_ENABLE_TRAINING_TORCH_INTEROP)
     list(APPEND ONNXRUNTIME_LIBS Python::Python)
+  endif()
+
+  if (onnxruntime_ENABLE_TRITON)
+    list(APPEND ONNXRUNTIME_LIBS Python::Module)
   endif()
 
   list(APPEND ONNXRUNTIME_LIBS

@@ -17,8 +17,8 @@ from ._execution_agent import TrainingAgent
 from ._fallback import ORTModuleFallbackException, _FallbackManager, _FallbackPolicy
 from ._gradient_accumulation_manager import GradientAccumulationManager
 from ._graph_execution_manager import GraphExecutionManager, _RunStateInfo, _SkipCheck
-from ._io import _FlattenedModule, _InputInfo
 from ._graph_transformer_registry import GraphTransformerRegistry
+from ._io import _FlattenedModule, _InputInfo
 from ._utils import save_tuning_results
 from .debug_options import DebugOptions
 

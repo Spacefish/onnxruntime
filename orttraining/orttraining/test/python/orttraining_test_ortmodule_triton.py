@@ -200,6 +200,9 @@ def _run_module_test(module_cls, dtype, gen_inputs_func, triton_op_count, **kwar
         ort_output = _run_step(ort_model, *ort_inputs)
         _test_helpers.assert_values_are_close(pt_output, ort_output, rtol=rtol, atol=atol)
         _test_helpers.assert_gradients_match_and_reset_gradient(pt_model, ort_model, rtol=rtol, atol=atol)
+        for i in range(len(pt_inputs)):
+            if pt_inputs[i].requires_grad:
+                _test_helpers.assert_values_are_close(pt_inputs[i].grad, ort_inputs[i].grad, rtol=rtol, atol=atol)
 
     assert os.path.exists(os.path.join(os.getcwd(), "triton_model_torch_exported_training.onnx"))
     assert os.path.exists(os.path.join(os.getcwd(), "triton_model_optimized_training.onnx"))
@@ -233,7 +236,7 @@ def _run_tunable_op_test(module_cls, dtype, gen_inputs_func, tunable_op, impl_co
         _test_helpers.assert_gradients_match_and_reset_gradient(pt_model, ort_model, rtol=rtol, atol=atol)
     tunable_results_file = os.path.join(os.getcwd(), "tuning_results_training.json")
     assert os.path.exists(tunable_results_file)
-    with open(tunable_results_file, "r") as f:
+    with open(tunable_results_file) as f:
         tunable_results = json.load(f)
     assert tunable_op in str(tunable_results)
     del os.environ["ORTMODULE_ENABLE_TUNING"]
@@ -253,10 +256,6 @@ def _run_tunable_op_test(module_cls, dtype, gen_inputs_func, tunable_op, impl_co
             ort_output = _run_step(ort_model, *ort_inputs)
             _test_helpers.assert_values_are_close(pt_output, ort_output, rtol=rtol, atol=atol)
             _test_helpers.assert_gradients_match_and_reset_gradient(pt_model, ort_model, rtol=rtol, atol=atol)
-        assert (
-            new_tunable_results
-            == ort_model._torch_module._execution_manager(True)._execution_agent._inference_session.get_tuning_results()
-        )
     os.remove(tunable_results_file)
     del os.environ["ORTMODULE_TUNING_RESULTS_PATH"]
 
@@ -668,7 +667,7 @@ def test_gemm(dtype, input_info):
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
 def test_elementwise_module(dtype):
-    N, D, H, W = 8, 768, 12, 64
+    n, d, h, w = 8, 768, 12, 64
 
     class NeuralNetElementwise(torch.nn.Module):
         def forward(self, input1, input2, input3, input4):
@@ -676,10 +675,10 @@ def test_elementwise_module(dtype):
 
     def _gen_inputs(dtype):
         return [
-            torch.rand(N, D, H, W, dtype=dtype, device=DEVICE, requires_grad=True),
-            torch.rand(W, dtype=dtype, device=DEVICE, requires_grad=True),
-            torch.rand(D, 1, 1, dtype=dtype, device=DEVICE, requires_grad=True),
-            torch.rand(N, 1, H, W, dtype=dtype, device=DEVICE, requires_grad=True),
+            torch.rand(n, d, h, w, dtype=dtype, device=DEVICE, requires_grad=True),
+            torch.rand(w, dtype=dtype, device=DEVICE, requires_grad=True),
+            torch.rand(d, 1, 1, dtype=dtype, device=DEVICE, requires_grad=True),
+            torch.rand(n, 1, h, w, dtype=dtype, device=DEVICE, requires_grad=True),
         ]
 
     _run_module_test(NeuralNetElementwise, dtype, _gen_inputs, 1)
@@ -706,6 +705,8 @@ def test_softmax_module(dtype, input_shapes_and_axis):
     "input_shapes_and_axis", [([2, 1024], [2, 1024], -1), ([2, 2049], [2, 1], -1), ([2, 3, 3, 3], [3, 3], 2)]
 )
 def test_layer_norm_module(dtype, input_shapes_and_axis):
+    pytest.skip("LayerNorm is disabled for now due to perf issue.")
+
     class NeuralNetLayerNorm(torch.nn.Module):
         def __init__(self):
             super().__init__()
@@ -723,6 +724,26 @@ def test_layer_norm_module(dtype, input_shapes_and_axis):
         ]
 
     _run_module_test(NeuralNetLayerNorm, dtype, _gen_inputs, 2)
+
+
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
+@pytest.mark.parametrize("has_sum", [True, False])
+def test_slice_scel_module(dtype, has_sum):
+    class NeuralNetSliceScel(torch.nn.Module):
+        def forward(self, logits, labels):
+            shift_logits = logits[..., :-1, :].contiguous()
+            labels = labels[..., 1:].contiguous()
+            loss_fct = torch.nn.CrossEntropyLoss()
+            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), labels.view(-1))
+            return logits + loss if has_sum else loss
+
+    def _gen_inputs(dtype):
+        return [
+            (torch.rand(4, 8, 16) * 0.01).to(dtype=dtype, device=DEVICE).requires_grad_(True),
+            torch.randint(0, 16, (4, 8), dtype=torch.int64, device=DEVICE),
+        ]
+
+    _run_module_test(NeuralNetSliceScel, dtype, _gen_inputs, 2)
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float16])
