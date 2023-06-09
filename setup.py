@@ -509,7 +509,7 @@ classifiers = [
 if not enable_training:
     classifiers.extend(["Operating System :: Microsoft :: Windows", "Operating System :: MacOS"])
 
-if enable_training or enable_training_apis:
+if enable_training:
     packages.append("onnxruntime.training")
     if enable_training:
         packages.extend(

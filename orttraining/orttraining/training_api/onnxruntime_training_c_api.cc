@@ -261,23 +261,42 @@ ORT_API_STATUS_IMPL(OrtTrainingApis::SchedulerStep, _Inout_ OrtTrainingSession* 
 ORT_API_STATUS_IMPL(OrtTrainingApis::LoadCheckpoint, _In_ const ORTCHAR_T* checkpoint_path,
                     _Outptr_ OrtCheckpointState** checkpoint_state) {
   API_IMPL_BEGIN
+
+  OrtStatus* status = nullptr;
+
+#if !defined(ORT_MINIMAL_BUILD)
   *checkpoint_state = nullptr;
   auto chkpt_state = std::make_unique<onnxruntime::training::api::CheckpointState>();
   ORT_API_RETURN_IF_STATUS_NOT_OK(onnxruntime::training::api::LoadCheckpoint(checkpoint_path, *chkpt_state));
   *checkpoint_state = reinterpret_cast<OrtCheckpointState*>(chkpt_state.release());
+#else
+  ORT_UNUSED_PARAMETER(checkpoint_state);
+  ORT_UNUSED_PARAMETER(checkpoint_path);
+  status = OrtApis::CreateStatus(ORT_NOT_IMPLEMENTED, "Checkpoint cannot be loaded in a minimal training build.");
+#endif
 
-  return nullptr;
+  return status;
   API_IMPL_END
 }
 
 ORT_API_STATUS_IMPL(OrtTrainingApis::SaveCheckpoint, _In_ OrtCheckpointState* checkpoint_state,
                     _In_ const ORTCHAR_T* checkpoint_path, const bool include_optimizer_state) {
   API_IMPL_BEGIN
+
+  OrtStatus* status = nullptr;
+
+#if !defined(ORT_MINIMAL_BUILD)
   auto chkpt_state = reinterpret_cast<onnxruntime::training::api::CheckpointState*>(checkpoint_state);
   ORT_API_RETURN_IF_STATUS_NOT_OK(
       onnxruntime::training::api::SaveCheckpoint(*chkpt_state, checkpoint_path, include_optimizer_state));
+#else
+  ORT_UNUSED_PARAMETER(checkpoint_state);
+  ORT_UNUSED_PARAMETER(checkpoint_path);
+  ORT_UNUSED_PARAMETER(include_optimizer_state);
+  status = OrtApis::CreateStatus(ORT_NOT_IMPLEMENTED, "Checkpoint cannot be saved in a minimal training build.");
+#endif
 
-  return nullptr;
+  return status;
   API_IMPL_END
 }
 
@@ -329,6 +348,9 @@ ORT_API_STATUS_IMPL(OrtTrainingApis::ExportModelForInferencing, _Inout_ OrtTrain
                     _In_reads_(graph_outputs_len) const char* const* graph_output_names) {
   API_IMPL_BEGIN
 
+  OrtStatus* status = nullptr;
+
+#if !defined(ORT_MINIMAL_BUILD)
   if (graph_outputs_len == 0U) {
     return OrtApis::CreateStatus(
         ORT_INVALID_ARGUMENT,
@@ -350,8 +372,16 @@ ORT_API_STATUS_IMPL(OrtTrainingApis::ExportModelForInferencing, _Inout_ OrtTrain
 
   ORT_API_RETURN_IF_STATUS_NOT_OK(
       session->ExportModelForInferencing(onnxruntime::ToUTF8String(inference_model_path), output_names));
+#else
+  ORT_UNUSED_PARAMETER(sess);
+  ORT_UNUSED_PARAMETER(inference_model_path);
+  ORT_UNUSED_PARAMETER(graph_outputs_len);
+  ORT_UNUSED_PARAMETER(graph_output_names);
+  status = OrtApis::CreateStatus(ORT_NOT_IMPLEMENTED,
+  "Inference model cannot be exported in a minimal training build.");
+#endif
 
-  return nullptr;
+  return status;
   API_IMPL_END
 }
 
@@ -409,6 +439,7 @@ ORT_API_STATUS_IMPL(OrtTrainingApis::AddProperty, _Inout_ OrtCheckpointState* ch
 
   OrtStatus* status = nullptr;
 
+#if !defined(ORT_MINIMAL_BUILD)
   auto chkpt_state = reinterpret_cast<onnxruntime::training::api::CheckpointState*>(checkpoint_state);
 
   switch (property_type) {
@@ -434,6 +465,14 @@ ORT_API_STATUS_IMPL(OrtTrainingApis::AddProperty, _Inout_ OrtCheckpointState* ch
       break;
     }
   }
+#else
+  ORT_UNUSED_PARAMETER(checkpoint_state);
+  ORT_UNUSED_PARAMETER(property_name);
+  ORT_UNUSED_PARAMETER(property_type);
+  ORT_UNUSED_PARAMETER(property_value);
+  status = OrtApis::CreateStatus(ORT_NOT_IMPLEMENTED,
+  "Property cannot be added to the state in a minimal training build.");
+#endif
 
   return status;
   API_IMPL_END
@@ -446,6 +485,7 @@ ORT_API_STATUS_IMPL(OrtTrainingApis::GetProperty, _In_ const OrtCheckpointState*
 
   OrtStatus* status = nullptr;
 
+#if !defined(ORT_MINIMAL_BUILD)
   auto chkpt_state = reinterpret_cast<const onnxruntime::training::api::CheckpointState*>(checkpoint_state);
   const auto value = chkpt_state->property_bag.GetProperty<
       onnxruntime::training::api::PropertyDataType>(property_name);
@@ -479,6 +519,15 @@ ORT_API_STATUS_IMPL(OrtTrainingApis::GetProperty, _In_ const OrtCheckpointState*
     stream << "Unknown type for property: " << property_name;
     status = OrtApis::CreateStatus(ORT_FAIL, stream.str().c_str());
   }
+#else
+  ORT_UNUSED_PARAMETER(checkpoint_state);
+  ORT_UNUSED_PARAMETER(property_name);
+  ORT_UNUSED_PARAMETER(allocator);
+  ORT_UNUSED_PARAMETER(property_type);
+  ORT_UNUSED_PARAMETER(property_value);
+  status = OrtApis::CreateStatus(ORT_NOT_IMPLEMENTED,
+  "Property cannot be retrieved from the state in a minimal training build.");
+#endif
 
   return status;
   API_IMPL_END
