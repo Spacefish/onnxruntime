@@ -233,7 +233,7 @@ class GraphExecutionManager(GraphExecutionInterface):
         # Enable Triton op executor if Triton is installed, backend has support and environment variable is set.
         if ortmodule._defined_from_envvar("ORTMODULE_USE_TRITON", 0) != 0 and C.is_triton_enabled():
             try:
-                import triton # noqa: F401
+                import triton  # noqa: F401
             except ImportError:
                 pass
             else:

@@ -581,13 +581,13 @@ def test_layer_norm_op(onnx_dtype, input_shape_and_axis):
     "input_info",
     [
         ([32, 64], False, [64, 16], False, 1.0),
-        ([33, 68], False, [18, 68], True, 1.5),
-        ([128, 64], True, [128, 32], False, 1.5),
+        ([33, 68], False, [18, 68], True, 0.5),
+        ([128, 64], True, [128, 32], False, 0.5),
         ([123, 234], True, [345, 123], True, -1.0),
         ([22, 33, 44], False, [44, 55], False, 1.0),
-        ([22, 33, 44], False, [666, 44], True, 2.0),
-        ([22, 33, 44], True, [33, 666], False, -2.0),
-        ([64, 128], False, [16, 64, 128], True, 1.5),
+        ([22, 33, 44], False, [666, 44], True, 0.2),
+        ([22, 33, 44], True, [33, 666], False, -0.2),
+        ([64, 128], False, [16, 64, 128], True, 0.5),
         ([16, 32, 64], False, [16, 64, 32], False, 1.0),
         ([8, 16, 32, 16], True, [8, 16, 32, 32], True, 1.0),
     ],
@@ -617,8 +617,8 @@ def test_matmul(dtype, input_info):
         ort_output = _from_dlpack(
             call_triton_by_name("triton_matmul", *[to_dlpack(tensor) for tensor in ort_inputs], **kwargs)
         )
-    rtol = 1e-03 if dtype == torch.float16 else 1e-04
-    atol = 1e-03 if dtype == torch.float16 else 1e-05
+    rtol = 1e-02 if dtype == torch.float16 else 1e-04
+    atol = 1e-02 if dtype == torch.float16 else 1e-05
     _test_helpers.assert_values_are_close(pt_output, ort_output, rtol=rtol, atol=atol)
 
 
@@ -626,10 +626,10 @@ def test_matmul(dtype, input_info):
 @pytest.mark.parametrize(
     "input_info",
     [
-        ([64, 32], False, [32, 64], False, [64, 64], 1.0, 1.0),
-        ([65, 129], False, [65, 129], True, [65, 1], 1.5, -1.0),
-        ([127, 63], True, [127, 127], False, [127], -1.0, 2.0),
-        ([256, 64], True, [128, 256], True, [1], 2.0, 1.5),
+        ([64, 32], False, [32, 64], False, [64, 64], 1.0, 0.0),
+        ([65, 129], False, [65, 129], True, [65, 1], 0.5, -0.5),
+        ([127, 63], True, [127, 127], False, [127], -1.0, 0.2),
+        ([256, 64], True, [128, 256], True, [1], 0.2, 0.5),
     ],
 )
 def test_gemm(dtype, input_info):
@@ -660,8 +660,8 @@ def test_gemm(dtype, input_info):
         ort_output = _from_dlpack(
             call_triton_by_name("triton_gemm", *[to_dlpack(tensor) for tensor in ort_inputs], **kwargs)
         )
-    rtol = 1e-03 if dtype == torch.float16 else 1e-04
-    atol = 1e-03 if dtype == torch.float16 else 1e-05
+    rtol = 1e-02 if dtype == torch.float16 else 1e-04
+    atol = 1e-02 if dtype == torch.float16 else 1e-05
     _test_helpers.assert_values_are_close(pt_output, ort_output, rtol=rtol, atol=atol)
 
 

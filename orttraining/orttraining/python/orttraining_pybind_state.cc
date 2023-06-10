@@ -554,7 +554,7 @@ void addObjectMethodsForTraining(py::module& m, ExecutionProviderRegistrationFn 
 #ifdef ENABLE_TRITON
     return true;
 #else
-    return false;
+        return false;
 #endif
   });
 #ifdef ENABLE_TRITON

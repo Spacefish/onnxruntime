@@ -212,6 +212,10 @@ if (onnxruntime_ENABLE_LANGUAGE_INTEROP_OPS)
   )
 endif()
 
+if (onnxruntime_ENABLE_TRITON)
+  list(APPEND onnxruntime_EXTERNAL_LIBRARIES Python::Module)
+endif()
+
 # If you are linking a new library, please add it to the list onnxruntime_INTERNAL_LIBRARIES or onnxruntime_EXTERNAL_LIBRARIES,
 # Please do not add a library directly to the target_link_libraries command
 target_link_libraries(onnxruntime PRIVATE
